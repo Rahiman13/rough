@@ -181,22 +181,51 @@ module.exports = updateCourse;
 // @desc    Delete a course
 // @route   DELETE /api/courses/:id
 // @access  Public
+// const fs = require('fs');
+// const path = require('path');
+
 const deleteCourse = async (req, res) => {
   try {
+    // Fetch the course from the database
     const course = await Course.findById(req.params.id);
 
     if (course) {
-      fs.unlinkSync(course.authorImage);
-      fs.unlinkSync(course.image);
+      // Delete the author image if it exists
+      if (course.authorImage) {
+        try {
+          fs.unlinkSync(course.authorImage);
+        } catch (err) {
+          if (err.code !== 'ENOENT') { // ENOENT means file not found
+            console.error('Error deleting author image:', err);
+            return res.status(500).json({ message: 'Failed to delete author image' });
+          }
+        }
+      }
+
+      // Delete the course image if it exists
+      if (course.image) {
+        try {
+          fs.unlinkSync(course.image);
+        } catch (err) {
+          if (err.code !== 'ENOENT') { // ENOENT means file not found
+            console.error('Error deleting course image:', err);
+            return res.status(500).json({ message: 'Failed to delete course image' });
+          }
+        }
+      }
+
+      // Delete the course document from the database
       await Course.deleteOne({ _id: req.params.id });
-      res.json({ message: 'Course removed' });
+      res.json({ message: 'Course removed successfully' });
     } else {
       res.status(404).json({ message: 'Course not found' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error deleting course:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 
 // Get total count of courses
 const getCourseCount = async (req, res) => {

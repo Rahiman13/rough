@@ -90,6 +90,7 @@ const updateInternship = async (req, res) => {
 
   let parsedCurriculum;
   try {
+    // Parse the curriculum if it's a string
     parsedCurriculum = typeof curriculum === 'string' ? JSON.parse(curriculum) : curriculum;
   } catch (error) {
     return res.status(400).json({ message: 'Curriculum must be a valid JSON object' });
@@ -98,44 +99,49 @@ const updateInternship = async (req, res) => {
   try {
     const internship = await Internship.findById(req.params.id);
 
-    if (internship) {
-      if (req.file) {
-        // If there's an existing image, delete it from Cloudinary
-        if (internship.image) {
-          const publicId = internship.image.split('/').pop().split('.')[0]; // Extract public ID from URL
-          await cloudinary.uploader.destroy(`intern_images/${publicId}`);
-        }
+    if (!internship) {
+      return res.status(404).json({ message: 'Internship not found' });
+    }
 
-        // Upload the new image
-        try {
-          const result = await cloudinary.uploader.upload(req.file.path, {
-            folder: 'intern_images',
-          });
-          internship.image = result.secure_url;
-        } catch (error) {
-          return res.status(500).json({ message: 'Image upload failed', error: error.message });
-        }
+    // Handle image upload if a file is provided
+    if (req.file) {
+      // Delete the existing image if present
+      if (internship.image) {
+        const publicId = internship.image.split('/').pop().split('.')[0]; // Extract public ID from URL
+        await cloudinary.uploader.destroy(`intern_images/${publicId}`);
       }
 
-      internship.courseTitle = courseTitle || internship.courseTitle;
-      internship.duration = duration || internship.duration;
-      internship.startDate = startDate || internship.startDate;
-      internship.endDate = endDate || internship.endDate;
-      internship.curriculum = parsedCurriculum || internship.curriculum;
-      internship.instructorId = instructorId || internship.instructorId;
-      internship.description = description || internship.description;
-      internship.authorName = authorName || internship.authorName;
-      internship.review = review || internship.review;
-
-      const updatedInternship = await internship.save();
-      res.json(updatedInternship);
-    } else {
-      res.status(404).json({ message: 'Internship not found' });
+      // Upload the new image
+      try {
+        const result = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'intern_images',
+        });
+        internship.image = result.secure_url;
+      } catch (error) {
+        return res.status(500).json({ message: 'Image upload failed', error: error.message });
+      }
     }
+
+    // Update the internship fields
+    internship.courseTitle = courseTitle || internship.courseTitle;
+    internship.duration = duration || internship.duration;
+    internship.startDate = startDate || internship.startDate;
+    internship.endDate = endDate || internship.endDate;
+    internship.curriculum = parsedCurriculum || internship.curriculum;
+    internship.instructorId = instructorId || internship.instructorId;
+    internship.description = description || internship.description;
+    internship.authorName = authorName || internship.authorName;
+    internship.review = review || internship.review;
+
+    // Save the updated internship
+    const updatedInternship = await internship.save();
+    res.json(updatedInternship);
+
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
+
 
 // @desc    Delete an internship
 // @route   DELETE /api/internships/:id
